@@ -1,15 +1,21 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+// context/AuthContext.tsx
+import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../services/supabase';
 
 interface AuthContextProps {
   user: any;
-  signIn: (email: string, password: string) => Promise<any>;
+  setUser: React.Dispatch<React.SetStateAction<any>>;
+  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
-export const AuthProvider: React.FC = ({ children }) => {
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -28,24 +34,25 @@ export const AuthProvider: React.FC = ({ children }) => {
   const signIn = async (email: string, password: string) => {
     const { user, error } = await supabase.auth.signIn({ email, password });
     if (error) throw error;
-    return user;
+    setUser(user);
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, setUser, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
+  const context = React.useContext(AuthContext);
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
